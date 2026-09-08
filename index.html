@@ -1,69 +1,475 @@
 <!DOCTYPE html>
-<html lang="pl">
-<head>
+<html lang="en"><head>
     <meta charset="UTF-8">
-    <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="keywords" content="sarkilo,sarkiloyt,sarkiloyoutube,youtube,yt,minecraft,minecrafthardcore,hardcore,50dni,50dnihardcore,polserca,polserduszka">
-    <link rel="stylesheet" href="style2.css">
-    <link rel="shortcut icon" href="./images/avatar.png">
+    <title>E-Ink Timer &amp; Stopwatch</title>
+    <style>
+        /* Light theme (default) */
+        :root {
+            --bg-color: #ffffff;
+            --text-color: #000000;
+            --track-color: #e0e0e0;
+        }
 
-    <!-- Google Fonts import -->
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Encode+Sans+SC:wght@100;400&family=Quicksand&display=swap" rel="stylesheet">
+        /* Dark theme (user-selected) */
+        body.dark-mode {
+            --bg-color: #000000;
+            --text-color: #ffffff;
+            --track-color: #333333;
+        }
 
-    <title>Sarkilo</title>
+        /* Flash effect: inverts whatever the current theme is */
+        body.inverted {
+            --bg-color: #000000;
+            --text-color: #ffffff;
+            --track-color: #333333;
+        }
+        body.dark-mode.inverted {
+            --bg-color: #ffffff;
+            --text-color: #000000;
+            --track-color: #e0e0e0;
+        }
+
+        * {
+            box-sizing: border-box;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+        }
+
+        body {
+            margin: 0;
+            padding: 0;
+            min-height: 100vh;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            /* No transitions here to ensure instant snapping on e-ink displays */
+        }
+
+        .container {
+            text-align: center;
+            width: 100%;
+            max-width: 500px;
+            padding: 20px;
+        }
+
+        /* --- SETUP VIEW --- */
+        #setup-view {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 25px;
+        }
+
+        .input-group {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            font-size: 2rem;
+            font-weight: bold;
+        }
+
+        .input-group input {
+            width: 80px;
+            font-size: 3rem;
+            text-align: center;
+            border: 4px solid var(--text-color);
+            background-color: transparent;
+            color: var(--text-color);
+            border-radius: 8px;
+            padding: 10px 0;
+            font-weight: bold;
+        }
+
+        .input-group span {
+            font-size: 3rem;
+        }
+
+        button {
+            background-color: transparent;
+            color: var(--text-color);
+            border: 4px solid var(--text-color);
+            font-size: 1.5rem;
+            font-weight: bold;
+            padding: 15px 40px;
+            border-radius: 8px;
+            cursor: pointer;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            width: 100%;
+            max-width: 300px;
+        }
+
+        button:active {
+            background-color: var(--text-color);
+            color: var(--bg-color);
+        }
+
+        .divider {
+            width: 80%;
+            height: 4px;
+            background-color: var(--track-color);
+            margin: 10px 0;
+        }
+
+        /* --- SHARED CONTROLS --- */
+        .controls-group {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            width: 100%;
+            align-items: center;
+        }
+
+        /* --- TIMER VIEW --- */
+        #timer-view {
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            gap: 30px;
+            width: 100%;
+        }
+
+        .circle-container {
+            position: relative;
+            width: 100%;
+            max-width: 350px;
+            aspect-ratio: 1 / 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto;
+        }
+
+        svg {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            transform: rotate(-90deg); /* Start at 12 o'clock */
+        }
+
+        .track {
+            fill: none;
+            stroke: var(--track-color);
+            stroke-width: 10;
+        }
+
+        .progress {
+            fill: none;
+            stroke: var(--text-color);
+            stroke-width: 10;
+            stroke-linecap: square; /* Square looks better on e-ink */
+            stroke-dasharray: 879.64;
+            stroke-dashoffset: 0;
+        }
+
+        #time-display {
+            font-size: 4.5rem;
+            font-weight: bold;
+            z-index: 10;
+            font-variant-numeric: tabular-nums; /* Keeps numbers from shifting */
+        }
+
+        /* --- STOPWATCH VIEW --- */
+        #stopwatch-view {
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            gap: 40px;
+            width: 100%;
+        }
+
+        #stopwatch-display {
+            font-size: 5rem; /* Big numbers for stopwatch */
+            font-weight: bold;
+            font-variant-numeric: tabular-nums;
+            line-height: 1;
+        }
+
+        /* Hide number input arrows */
+        input[type="number"]::-webkit-inner-spin-button,
+        input[type="number"]::-webkit-outer-spin-button {
+            -webkit-appearance: none;
+            margin: 0;
+        }
+        input[type="number"] {
+            -moz-appearance: textfield;
+        }
+
+        /* Adjust for smaller screens */
+        @media (max-width: 450px) {
+            #stopwatch-display {
+                font-size: 4rem;
+            }
+        }
+    </style>
 </head>
-<body background="./images/background.png">
-    <div id="container">
-        <div class="left-sidebar">
-            <!-- Sidebar contents -->
-            <div class="left-sidebar-content">
-                    <div class="avatar"><img  class="avatar-picture" src="./images/avatar.png"></div>
-                    <div class="username">Sarkilo</div>
-                    <div class="bio">
-                        Dzięki, że tu zaglądasz. Oznacza to, że zainteresowały Cię moje treści. Poniżej znajdziesz listę moich social mediów oraz portfolio.
-            Jeśli chcesz się ze mną skontaktować, to napisz w DM na Instagramie, lub skorzystaj z maila na samym dole tej strony.
-                    </div>
-                <footer>
-                    <div class="footer footer-left">
-                        <div class="contact-info">
-                            Sarkilo<br>
-                            kanalbeznazwy5@gmail.com<br><br>
-                            <a href="https://forms.gle/8zzeqbwVsksDyBn8A"><div class="link-btn">Kontakt</div></a>
-                        </div>
-                    </div>
-                </footer>
-            </div>
-        </div><!--
-     --><div class="article">
-            <!-- Main contents -->
-            <div class="article-content">
-                <article>
-                    <header><div class="article-header">Social media</div></header>
-                    <a href="https://www.tiktok.com/@sarkilo"><div class="link-btn">TikTok</div></a>
-                    <a href="https://www.instagram.com/sarkilo7/"><div class="link-btn">Instagram</div></a>
-                    <a href="https://www.youtube.com/channel/UCrr_NH7mfy4C954qiXZ5R7A"><div class="link-btn">YouTube</div></a>
-                    <a href="https://twitch.tv/sarkilo7"><div class="link-btn">Twitch</div></a>
-                    <a href="https://twitter.com/Sarkilo7"><div class="link-btn">Twitter</div></a>
-                    <a href="https://github.com/Sarkilo/"><div class="link-btn">Github</div></a>
-                    <a href="https://www.reddit.com/user/Gnester7"><div class="link-btn">Reddit</div></a>
+<body>
 
-                    <header><div class="article-header">Inne</div></header>
-                    <a href="texturepacks.html"><div class="link-btn">Minecraft txt</div></a>
-                </article>
+    <div class="container">
+
+        <!-- Setup View: Where you choose what to start -->
+        <div id="setup-view">
+            <h1>Timer</h1>
+            <div class="input-group">
+                <div>
+                    <input type="number" id="min-input" min="0" max="99" value="05" onclick="this.select();">
+                    <div style="font-size: 1rem; margin-top: 5px;">MIN</div>
+                </div>
+                <span>:</span>
+                <div>
+                    <input type="number" id="sec-input" min="0" max="59" value="00" onclick="this.select();">
+                    <div style="font-size: 1rem; margin-top: 5px;">SEC</div>
+                </div>
+            </div>
+            <button onclick="startTimer()">Start Timer</button>
+
+            <div class="divider"></div>
+
+            <h1>Stopwatch</h1>
+            <button onclick="startStopwatch()">Start Stopwatch</button>
+
+            <div class="divider"></div>
+
+            <button class="theme-toggle-btn" onclick="toggleTheme()">Dark Mode</button>
+        </div>
+
+        <!-- Timer View -->
+        <div id="timer-view">
+            <div class="circle-container">
+                <svg viewBox="0 0 300 300">
+                    <circle class="track" cx="150" cy="150" r="140"></circle>
+                    <circle class="progress" id="progress-circle" cx="150" cy="150" r="140"></circle>
+                </svg>
+                <div id="time-display">05:00</div>
+            </div>
+            <div class="controls-group">
+                <button id="pause-timer-btn" onclick="togglePauseTimer()">Pause</button>
+                <button onclick="resetTimer()">Stop / Reset</button>
+                <div class="divider"></div>
+                <button class="theme-toggle-btn" onclick="toggleTheme()">Dark Mode</button>
             </div>
         </div>
-        <div class="footer footer-btm">
-        <footer>
-            <div class="contact-info">
-                Sarkilo<br>
-                kanalbeznazwy5@gmail.com<br><br>
-                <a href="https://forms.gle/8zzeqbwVsksDyBn8A"><div class="link-btn">Kontakt</div></a>
+
+        <!-- Stopwatch View -->
+        <div id="stopwatch-view">
+            <div id="stopwatch-display">00:00:00</div>
+            <div class="controls-group">
+                <button id="pause-stopwatch-btn" onclick="togglePauseStopwatch()">Pause</button>
+                <button onclick="resetStopwatch()">Exit / Reset</button>
+                <div class="divider"></div>
+                <button class="theme-toggle-btn" onclick="toggleTheme()">Dark Mode</button>
             </div>
-        </footer>
+        </div>
+
     </div>
-    </div>
-</body>
-</html>
+
+    <script>
+        // ==========================================
+        //  THEME LOGIC
+        // ==========================================
+
+        let isDarkMode = localStorage.getItem('timerTheme') === 'dark';
+        const themeButtons = document.querySelectorAll('.theme-toggle-btn');
+
+        function applyTheme() {
+            document.body.classList.toggle('dark-mode', isDarkMode);
+            themeButtons.forEach(btn => {
+                btn.textContent = isDarkMode ? 'Light Mode' : 'Dark Mode';
+            });
+        }
+
+        function toggleTheme() {
+            isDarkMode = !isDarkMode;
+            localStorage.setItem('timerTheme', isDarkMode ? 'dark' : 'light');
+            applyTheme();
+        }
+
+        applyTheme();
+
+        // ==========================================
+        //  CONFIGURATION
+        // ==========================================
+
+        // Flashes per second when the timer finishes
+        const FLASHES_PER_SECOND = 1;
+
+        // ==========================================
+        //  TIMER LOGIC
+        // ==========================================
+
+        let timerInterval = null;
+        let flashInterval = null;
+        let totalDuration = 0;
+        let timeRemaining = 0;
+        let isTimerRunning = false;
+
+        const CIRCUMFERENCE = 879.64;
+
+        // DOM Elements
+        const setupView = document.getElementById('setup-view');
+        const timerView = document.getElementById('timer-view');
+        const stopwatchView = document.getElementById('stopwatch-view');
+
+        const minInput = document.getElementById('min-input');
+        const secInput = document.getElementById('sec-input');
+
+        const timeDisplay = document.getElementById('time-display');
+        const progressCircle = document.getElementById('progress-circle');
+        const pauseTimerBtn = document.getElementById('pause-timer-btn');
+
+        const stopwatchDisplay = document.getElementById('stopwatch-display');
+        const pauseStopwatchBtn = document.getElementById('pause-stopwatch-btn');
+
+        function startTimer() {
+            let m = parseInt(minInput.value) || 0;
+            let s = parseInt(secInput.value) || 0;
+
+            totalDuration = (m * 60) + s;
+            timeRemaining = totalDuration;
+
+            if (totalDuration <= 0) return;
+
+            updateDisplayText();
+            progressCircle.style.strokeDashoffset = 0;
+
+            setupView.style.display = 'none';
+            timerView.style.display = 'flex';
+
+            pauseTimerBtn.style.display = ''; // Ensure the button is visible
+            pauseTimerBtn.textContent = 'Pause';
+            isTimerRunning = true;
+
+            clearInterval(timerInterval);
+            timerInterval = setInterval(tickTimer, 1000);
+        }
+
+        function tickTimer() {
+            timeRemaining--;
+            updateDisplayText();
+
+            const progressRatio = timeRemaining / totalDuration;
+            const offset = CIRCUMFERENCE - (progressRatio * CIRCUMFERENCE);
+            progressCircle.style.strokeDashoffset = offset;
+
+            if (timeRemaining <= 0) {
+                endTimer();
+            }
+        }
+
+        function togglePauseTimer() {
+            // Do nothing if the timer has already finished
+            if (timeRemaining <= 0) return;
+
+            if (isTimerRunning) {
+                clearInterval(timerInterval);
+                isTimerRunning = false;
+                pauseTimerBtn.textContent = 'Resume';
+            } else {
+                timerInterval = setInterval(tickTimer, 1000);
+                isTimerRunning = true;
+                pauseTimerBtn.textContent = 'Pause';
+            }
+        }
+
+        function updateDisplayText() {
+            let m = Math.floor(timeRemaining / 60);
+            let s = timeRemaining % 60;
+
+            m = m < 10 ? '0' + m : m;
+            s = s < 10 ? '0' + s : s;
+
+            timeDisplay.textContent = `${m}:${s}`;
+        }
+
+        function endTimer() {
+            clearInterval(timerInterval);
+            isTimerRunning = false;
+            pauseTimerBtn.style.display = 'none'; // Hide pause button when flashing starts
+
+            const toggleDelayMs = 1000 / (FLASHES_PER_SECOND * 2);
+            flashInterval = setInterval(() => {
+                document.body.classList.toggle('inverted');
+            }, toggleDelayMs);
+        }
+
+        function resetTimer() {
+            clearInterval(timerInterval);
+            clearInterval(flashInterval);
+            isTimerRunning = false;
+            document.body.classList.remove('inverted');
+
+            timerView.style.display = 'none';
+            setupView.style.display = 'flex';
+        }
+
+        // ==========================================
+        //  STOPWATCH LOGIC
+        // ==========================================
+
+        let stopwatchInterval = null;
+        let stopwatchSeconds = 0;
+        let isStopwatchRunning = false;
+
+        function startStopwatch() {
+            stopwatchSeconds = 0;
+            updateStopwatchDisplay();
+
+            setupView.style.display = 'none';
+            stopwatchView.style.display = 'flex';
+
+            isStopwatchRunning = true;
+            pauseStopwatchBtn.textContent = 'Pause';
+
+            clearInterval(stopwatchInterval);
+            stopwatchInterval = setInterval(tickStopwatch, 1000);
+        }
+
+        function tickStopwatch() {
+            // Cap at 99 hours, 59 mins, 59 secs (359999 seconds)
+            if (stopwatchSeconds >= 359999) return;
+
+            stopwatchSeconds++;
+            updateStopwatchDisplay();
+        }
+
+        function updateStopwatchDisplay() {
+            let h = Math.floor(stopwatchSeconds / 3600);
+            let m = Math.floor((stopwatchSeconds % 3600) / 60);
+            let s = stopwatchSeconds % 60;
+
+            h = h < 10 ? '0' + h : h;
+            m = m < 10 ? '0' + m : m;
+            s = s < 10 ? '0' + s : s;
+
+            stopwatchDisplay.textContent = `${h}:${m}:${s}`;
+        }
+
+        function togglePauseStopwatch() {
+            if (isStopwatchRunning) {
+                clearInterval(stopwatchInterval);
+                isStopwatchRunning = false;
+                pauseStopwatchBtn.textContent = 'Resume';
+            } else {
+                stopwatchInterval = setInterval(tickStopwatch, 1000);
+                isStopwatchRunning = true;
+                pauseStopwatchBtn.textContent = 'Pause';
+            }
+        }
+
+        function resetStopwatch() {
+            clearInterval(stopwatchInterval);
+            isStopwatchRunning = false;
+
+            stopwatchView.style.display = 'none';
+            setupView.style.display = 'flex';
+        }
+    </script>
+
+
+</body></html>
