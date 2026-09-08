@@ -1,5 +1,4 @@
-# MY OWN LINK TREE
-What you see above is a simple website that was made to replace linktr.ee solution. Feel free to use it for your projects.
+# MY OWN TIMER/STOPWATCH
 
 ## Contributing
 All pull requests are welcome. If you have an idea for improvement you may also open an issue.
