@@ -4,4 +4,4 @@
 All pull requests are welcome. If you have an idea for improvement you may also open an issue.
 
 ## License
-[GNU General Public License (GPL v3)](https://www.gnu.org/licenses/quick-guide-gplv3.html)
+[Apache License 2.0](https://www.apache.org/licenses/LICENSE-2.0)
